@@ -86,7 +86,7 @@ class FaceEmbed:
         
         # Concatenate the new embedding with existing embeddings
         face_embeds = torch.cat((face_embeds, face_emb), dim=-2)
-        return face_embeds
+        return (face_embeds,)
 
 
 class FaceEmbedCombine:
@@ -140,7 +140,7 @@ class FaceEmbedCombine:
         
         # Generate the conditioning embedding and move it to the appropriate device
         conditionings = resampler(embeds).to(comfy.model_management.get_torch_device())
-        return conditionings
+        return (conditionings,)
 
 
 class AngleFromFace:
@@ -215,7 +215,7 @@ class AngleFromFace:
                 kps[0], kps[1],
                 round_angle=True if rotate_mode == "loseless" else False
             )
-        return angle
+        return (angle,)
 
 
 class ComposeRotated:
@@ -281,7 +281,7 @@ class ComposeRotated:
 
         # Crop the rotated image to match the original dimensions
         image = rotated_image[:, pad_y1:pad_y2, pad_x1:pad_x2, :]
-        return image,
+        return (image,)
 
 
 class LoadInstantIdAdapter:
@@ -340,7 +340,7 @@ class LoadInstantIdAdapter:
             ff_mult=4
         )
         resampler.load_state_dict(model["image_proj"])  
-        return instant_id, resampler
+        return (instant_id, resampler)
 
 
 class InstantIdAdapterApply:
@@ -418,7 +418,7 @@ class InstantIdAdapterApply:
         for index in range(10):
             set_model_patch_replace(modified_model, patch_kwargs, ("middle", 1, index))
             patch_kwargs["number"] += 1
-        return modified_model,
+        return (modified_model,)
 
 
 class ControlNetInstantIdApply:
@@ -496,7 +496,7 @@ class ControlNetInstantIdApply:
                 conditioned_output.append([t[0], d])
             
             out.append(conditioned_output) 
-        return out[0], out[1]
+        return (out[0], out[1],)
 
 
 class InstantIdAndControlnetApply:
@@ -656,7 +656,7 @@ class PreprocessImageAdvanced:
         assert len(face_info) > 0, "No face detected for preprocess image"
         face_info = sorted(face_info, key=lambda x: (x["bbox"][2] - x["bbox"][0]) * (x["bbox"][3] - x["bbox"][1]))[-1]
         face_bbox = face_info["bbox"]
-        
+    
         _, original_height, original_width, _ = image.shape
         new_mask = np.zeros((original_height, original_width), dtype=np.uint8)
         x_min, y_min, x_max, y_max = [int(x) for x in face_bbox]
@@ -667,6 +667,7 @@ class PreprocessImageAdvanced:
         mask = mask[:, p_y1:p_y2, p_x1:p_x2]
         image = image[:, p_y1:p_y2, p_x1:p_x2]
         kps = get_kps_from_image(image, insightface) if insightface else None
+        _, original_height, original_width, _ = image.shape
         
         if resize_mode == "auto":
             width, height = resize_to_fit_area(int(p_x2 - p_x1), int(p_y2 - p_y1), width, height)
@@ -693,7 +694,7 @@ class PreprocessImageAdvanced:
             kps *= [image.shape[2] / original_width, image.shape[1] / original_height]
             control_image = draw_kps(width, height, kps)
             control_image = (torch.from_numpy(control_image).float() / 255.0).unsqueeze(0)
-        return image, mask, control_image, p_x1, p_y1, original_width, original_height, new_width, new_height
+        return (image, mask, control_image, p_x1, p_y1, original_width, original_height, new_width, new_height)
 
 
 class PreprocessImage(PreprocessImageAdvanced):
@@ -785,7 +786,7 @@ class LoadInsightface:
             providers=["CPUExecutionProvider", "CUDAExecutionProvider"]
         )
         app.prepare(ctx_id=0, det_thresh=0.3, det_size=(640, 640))
-        return app
+        return (app,)
 
 
 class KpsMaker:
@@ -850,7 +851,7 @@ class KpsMaker:
             mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
 
         mask = mask.unsqueeze(0)
-        return image, mask
+        return (image, mask)
 
 
 class RotateImage:
@@ -896,7 +897,7 @@ class RotateImage:
             return image,
 
         image = rotate_with_pad(image, counter_clockwise, angle)
-        return image
+        return (image,)
 
 
 NODE_CLASS_MAPPINGS = {
